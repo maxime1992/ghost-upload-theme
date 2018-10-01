@@ -1,13 +1,24 @@
 import * as fs from 'fs';
 import resolveCwd from 'resolve-cwd';
+import dotenv from 'dotenv';
+import getenv from 'getenv';
+import { debugLog } from './api/debug-log';
 
 export interface ArgumentsToParse {
   'theme-path': string;
+  'routes-path': string;
+  'content-path': string;
+  'activate-theme': string;
   'environment-path': string;
+  init: string;
 }
 
 export interface Arguments {
   themePath: string;
+  routesPath: string;
+  contentPath: string;
+  activateTheme: boolean;
+  initGhost: boolean;
   environmentPath: string;
 }
 
@@ -24,14 +35,12 @@ export const extractArgumentsOrFail = (argv: ArgumentsToParse): Arguments => {
     );
   }
 
-  if (!argv['environment-path']) {
-    throw new Error(
-      'You must provide the argument "environment-path" indicating where to find the environment file (json)'
-    );
-  }
-
   return {
+    initGhost: !!argv['init'],
     themePath: argv['theme-path'],
+    contentPath: argv['content-path'],
+    routesPath: argv['routes-path'],
+    activateTheme: !!argv['activate-theme'],
     environmentPath: argv['environment-path'],
   };
 };
@@ -41,43 +50,34 @@ const fileExists = (pathStr: string): boolean => {
   return fs.existsSync(fullPath);
 };
 
-const readFileSync = (pathStr: string): string => {
-  const fullPath: string = resolveCwd(pathStr);
-  return fs.readFileSync(fullPath, 'utf8');
-};
-
-const readJsonSync = <T = any>(pathStr: string): T => {
-  return JSON.parse(readFileSync(pathStr));
-};
-
 export const getStreamForPath = (pathStr: string): fs.ReadStream => {
   const fullPath: string = resolveCwd(pathStr);
 
   return fs.createReadStream(fullPath);
 };
 
-export const checkFilesExistsOrFail = (args: Arguments): void => {
+export const assertFilesExist = (args: Arguments): void => {
   if (!fileExists(args.themePath)) {
-    throw new Error('Theme path is invalid: File does not exists');
-  }
-
-  if (!fileExists(args.environmentPath)) {
-    throw new Error('Environment path is invalid: File does not exists');
+    throw new Error('Theme path is invalid: File does not exist');
   }
 };
 
 export const extractEnvironmentVariablesOrFail = (
-  pathStr: string
+  path: string | undefined
 ): Environment => {
-  const environment: Environment = readJsonSync<Environment>(pathStr);
+  const result = dotenv.config(path ? { path } : undefined);
 
-  if (!environment.baseUrl || !environment.email || !environment.password) {
-    throw new Error('Envrionment file does not contains required variables');
+  if (result.error) {
+    if (!path && result.error.code === 'ENOENT') {
+      debugLog('No .env file detected, using environment variables only');
+    } else {
+      throw result.error;
+    }
   }
 
   return {
-    baseUrl: environment.baseUrl,
-    email: environment.email,
-    password: environment.password,
+    baseUrl: getenv('GHOST_URL'),
+    email: getenv('GHOST_ADMIN_EMAIL'),
+    password: getenv('GHOST_ADMIN_PASSWORD'),
   };
 };

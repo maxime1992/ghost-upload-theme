@@ -25,7 +25,7 @@
   "scripts": {
     "lint": "tslint -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
     "prebuild": "rimraf dist",
-    "build": "tsc --module commonjs && rollup -c rollup.config.ts && typedoc --out docs --target es6 --theme minimal --mode file src",
+    "build": "tsc --module commonjs && rollup -c rollup.config.ts && typedoc --out docs --target es6 --theme minimal --mode file src && yarn copy-index",
     "copy-index": "cp ./src/index.js ./dist",
     "start": "rollup -c rollup.config.ts -w",
     "test": "jest",
@@ -79,6 +79,7 @@
     "collectCoverage": true
   },
   "devDependencies": {
+    "@types/debug": "0.0.30",
     "@types/form-data": "2.2.1",
     "@types/jest": "22.0.0",
     "@types/node": "10.3.4",
@@ -115,9 +116,13 @@
   },
   "dependencies": {
     "commander": "2.15.1",
+    "debug": "3.1.0",
+    "dotenv": "6.0.0",
     "form-data": "2.3.2",
+    "getenv": "0.7.0",
     "minimist": "1.2.0",
     "node-fetch": "2.1.2",
-    "resolve-cwd": "2.0.0"
+    "resolve-cwd": "2.0.0",
+    "supports-color": "5.5.0"
   }
 }

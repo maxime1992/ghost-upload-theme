@@ -6,13 +6,20 @@ export interface Config {
     password: string;
   };
   urls: {
+    baseApiUrl: string;
     configUrl: string;
 
     authUrl: string;
+    setupUrl: string;
 
     uploadThemeUrl: string;
+    uploadRoutesUrl: string;
+    uploadContentUrl: string;
+    activateThemeUrl: (themeName: string) => string;
   };
 }
+
+const apiVersionPath = `/ghost/api/v0.1`;
 
 export const createConfig = (env: Environment): Config => ({
   credentials: {
@@ -20,10 +27,16 @@ export const createConfig = (env: Environment): Config => ({
     password: env.password,
   },
   urls: {
-    configUrl: `${env.baseUrl}/configuration`,
+    baseApiUrl: env.baseUrl + apiVersionPath,
+    configUrl: `${env.baseUrl}${apiVersionPath}/configuration`,
 
-    authUrl: `${env.baseUrl}/authentication/token`,
+    authUrl: `${env.baseUrl}${apiVersionPath}/authentication/token`,
+    setupUrl: `${env.baseUrl}${apiVersionPath}/authentication/setup`,
 
-    uploadThemeUrl: `${env.baseUrl}/themes/upload/`,
+    uploadThemeUrl: `${env.baseUrl}${apiVersionPath}/themes/upload/`,
+    activateThemeUrl: themeName =>
+      `${env.baseUrl}${apiVersionPath}/themes/${themeName}/activate`,
+    uploadRoutesUrl: `${env.baseUrl}${apiVersionPath}/settings/routes/yaml`,
+    uploadContentUrl: `${env.baseUrl}${apiVersionPath}/db`,
   },
 });

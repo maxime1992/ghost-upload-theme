@@ -13,6 +13,6 @@ notifications:
 node_js:
   - node
 script:
-  - yarn run build && yarn run copy-index
+  - yarn run build
 after_success:
   - yarn run semantic-release
