@@ -29,7 +29,7 @@ async function start() {
 
   if (args.initGhost) {
     debugLog(`Initializing Ghost...`);
-    await ghostApi.init();
+    await ghostApi.init(args.allowPreconfiguredSetup);
     debugLog(`Initialization success.`);
   }
 

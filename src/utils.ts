@@ -11,6 +11,7 @@ export interface ArgumentsToParse {
   'activate-theme': string;
   'environment-path': string;
   init: string;
+  'allow-preconfigured-setup': string;
 }
 
 export interface Arguments {
@@ -20,6 +21,7 @@ export interface Arguments {
   activateTheme: boolean;
   initGhost: boolean;
   environmentPath: string;
+  allowPreconfiguredSetup: boolean;
 }
 
 export interface Environment {
@@ -42,6 +44,7 @@ export const extractArgumentsOrFail = (argv: ArgumentsToParse): Arguments => {
     routesPath: argv['routes-path'],
     activateTheme: !!argv['activate-theme'],
     environmentPath: argv['environment-path'],
+    allowPreconfiguredSetup: !!argv['allow-preconfigured-setup'],
   };
 };
 
