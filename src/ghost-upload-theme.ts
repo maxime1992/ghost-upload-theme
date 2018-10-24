@@ -28,7 +28,9 @@ async function start() {
   const ghostApi: GhostApi = new GhostApi(config);
 
   if (args.initGhost) {
-    debugLog(`Initializing Ghost...`);
+    debugLog(`Initializing Ghost..., `, {
+      allowPreconfiguredSetup: args.allowPreconfiguredSetup,
+    });
     await ghostApi.init(args.allowPreconfiguredSetup);
     debugLog(`Initialization success.`);
   }
