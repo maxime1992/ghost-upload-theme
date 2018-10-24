@@ -12,11 +12,13 @@ import {
   RoutesResponse,
   ContentResponse,
   GhostResponse,
+  Errors,
 } from './api.interface';
 import { formatAuthParams } from './api.utils';
 import { Config } from './config';
 import { debugLog } from './debug-log';
 import getenv from 'getenv';
+import { Arguments } from '../utils';
 
 export class ErrorFetchClientConfig extends Error {}
 export class ErrorAuthClient extends Error {}
@@ -25,6 +27,7 @@ export class ErrorUploadContent extends Error {}
 export class ErrorUploadRoutes extends Error {}
 export class ErrorActivateTheme extends Error {}
 export class GhostAdminError extends Error {}
+export class SetupAlreadyCompletedError extends Error {}
 export class RetryAdminRoute extends Error {
   constructor(message?: string) {
     super(message);
@@ -42,7 +45,9 @@ export class GhostApi {
 
   constructor(private config: Config) {}
 
-  public async init(): Promise<InitResponse> {
+  public async init(
+    allowPreconfiguredSetup: Arguments['allowPreconfiguredSetup']
+  ): Promise<void> {
     const body = {
       setup: [
         {
@@ -54,22 +59,35 @@ export class GhostApi {
       ],
     };
 
-    const initResponse: InitResponse = await this.fetchRetryOnErrors<
-      InitResponse
-    >(
-      this.config.urls.setupUrl,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
+    try {
+      await this.fetchRetryOnErrors<InitResponse>(
+        this.config.urls.setupUrl,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      },
-      RETRY_ERRORS
-    );
+        RETRY_ERRORS,
+        undefined,
+        (errors: Errors) => {
+          if (
+            allowPreconfiguredSetup &&
+            errors.some(e => e.message === 'Setup has already been completed.')
+          ) {
+            throw new SetupAlreadyCompletedError();
+          }
+        }
+      );
+    } catch (e) {
+      if (!(e instanceof SetupAlreadyCompletedError)) {
+        throw e;
+      }
+    }
 
-    return initResponse;
+    return;
   }
 
   public async login(): Promise<void> {
@@ -218,7 +236,8 @@ export class GhostApi {
     url: string | Request,
     init: RequestInit = { method: 'GET' },
     retryErrorTypes: string[],
-    verifyStatusWithConfigFetch: boolean = false
+    verifyStatusWithConfigFetch: boolean = false,
+    throwCustomError?: (errors: Errors) => void
   ): Promise<R> {
     const makeAttempt = (retries: number): Promise<R> => {
       debugLog(`Calling ${init.method} ${url}`);
@@ -229,6 +248,8 @@ export class GhostApi {
         .then(res => res.json() as Promise<R>)
         .then((res: R) => {
           if (res.errors) {
+            throwCustomError && throwCustomError(res.errors);
+
             if (res.errors.some(e => retryErrorTypes.includes(e.errorType))) {
               const message = this.ghostErrorResponseToString(res);
 

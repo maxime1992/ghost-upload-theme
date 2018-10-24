@@ -15,6 +15,7 @@ ghost-upload-theme
     --routes-path ./path/to/your/routes.yaml
     --content-path ./path/to/your/exported/content*.json
     --init # use this if the ghost install is completely fresh, no users created
+    --allow-preconfigured-setup # if setup already completed, allow the setup to fail (false by default)
 ```
 
 # Environment
