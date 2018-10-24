@@ -27,7 +27,15 @@ export class ErrorUploadContent extends Error {}
 export class ErrorUploadRoutes extends Error {}
 export class ErrorActivateTheme extends Error {}
 export class GhostAdminError extends Error {}
-export class SetupAlreadyCompletedError extends Error {}
+export class SetupAlreadyCompletedError extends Error {
+  constructor(message?: string) {
+    super(message);
+
+    // we need to set the prototype of this here so that we are able to
+    // later use `if (error instanceOf SetupAlreadyCompletedError)` otherwise it wouldn't work
+    Object.setPrototypeOf(this, SetupAlreadyCompletedError.prototype);
+  }
+}
 export class RetryAdminRoute extends Error {
   constructor(message?: string) {
     super(message);
@@ -75,7 +83,9 @@ export class GhostApi {
         (errors: Errors) => {
           if (
             allowPreconfiguredSetup &&
-            errors.some(e => e.message === 'Setup has already been completed.')
+            errors.some(e =>
+              e.message.includes('Setup has already been completed')
+            )
           ) {
             throw new SetupAlreadyCompletedError();
           }
