@@ -128,23 +128,33 @@ export class GhostApi {
       );
     }
 
-    const body = new FormData();
+    const body: FormData = new FormData();
     body.append('theme', getReadStream());
 
-    return this.fetchRetryOnErrors<ThemeResponse>(
-      this.config.urls.uploadThemeUrl,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.token}`,
+    return new Promise<number>(resolve => {
+      body.getLength((err, length) => {
+        resolve(length);
+      });
+    }).then(length => {
+      return this.fetchRetryOnErrors<ThemeResponse>(
+        this.config.urls.uploadThemeUrl,
+        {
+          method: 'POST',
+          headers: {
+            ...body.getHeaders(),
+            'content-length': length as any,
+            'user-agent':
+              'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/69.0.3497.81 Chrome/69.0.3497.81 Safari/537.36',
+            Authorization: `Bearer ${this.token}`,
+          },
+          body,
         },
-        body,
-      },
-      RETRY_ERRORS,
-      true
-    ).catch(err => {
-      debugLog(`Something went wrong while trying to upload the theme`, err);
-      throw new ErrorUploadTheme(err.message);
+        RETRY_ERRORS,
+        true
+      ).catch(err => {
+        debugLog(`Something went wrong while trying to upload the theme`, err);
+        throw new ErrorUploadTheme(err.message);
+      });
     });
   }
 
