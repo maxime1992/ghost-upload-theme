@@ -10,6 +10,12 @@ import {
   getStreamForPath,
 } from './utils';
 import { createConfig, Config } from './api/config';
+
+// if a promise throw and is not caught then exit with error
+process.on('unhandledRejection', err => {
+  throw err;
+});
+
 const argv: ArgumentsToParse = require('minimist')(process.argv.slice(2));
 
 // checks arguments and files
