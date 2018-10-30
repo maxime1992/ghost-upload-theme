@@ -270,15 +270,25 @@ export class GhostApi {
           timeout: getenv.int('GHOST_API_FETCH_TIMEOUT_MS', 60000),
         });
 
-        try {
-          parsedRes = await res.json();
-        } catch (error) {
-          const content = await res.text();
+        const resBuffer: Buffer = await res.buffer();
+        const resString: string = resBuffer.toString();
 
-          debugLog(
-            'An error occured while parsing the response. The response is not a valid JSON format. Content:',
-            content
-          );
+        try {
+          parsedRes = JSON.parse(resString);
+        } catch (error) {
+          if (
+            resString.toLowerCase().includes('our network is literally on fire')
+          ) {
+            debugLog(
+              `Ghost network is "literally on fire", in other words: THE BLOG IS CURRENTLY DOWN (and Ghost returns HTML instead of JSON...).`
+            );
+          } else {
+            debugLog(
+              url,
+              'An error occured while parsing the response. The response is not a valid JSON format. Content:',
+              resString
+            );
+          }
 
           throw error;
         }
