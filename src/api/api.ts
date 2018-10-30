@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import fetch, { Request, RequestInit } from 'node-fetch';
+import fetch, { Request, RequestInit, Response } from 'node-fetch';
 import FormData from 'form-data';
 import {
   ConfigurationResponse,
@@ -259,65 +259,72 @@ export class GhostApi {
     verifyStatusWithConfigFetch: boolean = false,
     throwCustomError?: (errors: Errors) => void
   ): Promise<R> {
-    const makeAttempt = (retries: number): Promise<R> => {
+    const makeAttempt = async (retries: number): Promise<R> => {
       debugLog(`Calling ${init.method} ${url}`);
-      return fetch(url, {
-        ...init,
-        timeout: getenv.int('GHOST_API_FETCH_TIMEOUT_MS', 60000),
-      })
-        .then(res => {
-          let parsedRes: Promise<R>;
-          try {
-            parsedRes = res.json();
-          } catch (error) {
-            debugLog(
-              'An error occured while parsing the response. The response is not a valid JSON format. Response:',
-              res
-            );
-            throw error;
-          }
-          return parsedRes;
-        })
-        .then((res: R) => {
-          if (res.errors) {
-            throwCustomError && throwCustomError(res.errors);
 
-            if (res.errors.some(e => retryErrorTypes.includes(e.errorType))) {
-              const message = this.ghostErrorResponseToString(res);
+      let parsedRes: R;
 
-              throw new RetryAdminRoute(message);
-            } else {
-              debugLog(res.errors);
-              throw new GhostAdminError(
-                `${
-                  init.method
-                } ${url} failed due to ${this.ghostErrorResponseToString(res)}`
-              );
-            }
-          }
-
-          return res;
-        })
-        .catch(async err => {
-          if (
-            err instanceof RetryAdminRoute ||
-            err.message.includes('network timeout')
-          ) {
-            debugLog(err.message);
-
-            if (retries > getenv.int('GHOST_MAX_API_RETRIES', 5)) {
-              throw new Error('Retry count exceeded');
-            }
-
-            debugLog(`Retrying ${init.method} ${url} after ${retries}s`);
-
-            await this.sleep(retries * 1000);
-
-            return makeAttempt(++retries);
-          }
-
-          throw err;
+      try {
+        const res: Response = await fetch(url, {
+          ...init,
+          timeout: getenv.int('GHOST_API_FETCH_TIMEOUT_MS', 60000),
         });
+
+        try {
+          parsedRes = await res.json();
+        } catch (error) {
+          const content = await res.text();
+
+          debugLog(
+            'An error occured while parsing the response. The response is not a valid JSON format. Content:',
+            content
+          );
+
+          throw error;
+        }
+
+        if (parsedRes.errors) {
+          throwCustomError && throwCustomError(parsedRes.errors);
+
+          if (
+            parsedRes.errors.some(e => retryErrorTypes.includes(e.errorType))
+          ) {
+            const message = this.ghostErrorResponseToString(parsedRes);
+
+            throw new RetryAdminRoute(message);
+          } else {
+            debugLog(parsedRes.errors);
+            throw new GhostAdminError(
+              `${
+                init.method
+              } ${url} failed due to ${this.ghostErrorResponseToString(
+                parsedRes
+              )}`
+            );
+          }
+        }
+      } catch (err) {
+        if (
+          err instanceof RetryAdminRoute ||
+          err.message.includes('network timeout')
+        ) {
+          debugLog(err.message);
+
+          if (retries > getenv.int('GHOST_MAX_API_RETRIES', 5)) {
+            throw new Error('Retry count exceeded');
+          }
+
+          debugLog(`Retrying ${init.method} ${url} after ${retries}s`);
+
+          await this.sleep(retries * 1000);
+
+          return makeAttempt(++retries);
+        }
+
+        throw err;
+      }
+
+      return parsedRes;
     };
 
     /**
