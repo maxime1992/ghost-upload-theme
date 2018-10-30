@@ -265,7 +265,19 @@ export class GhostApi {
         ...init,
         timeout: getenv.int('GHOST_API_FETCH_TIMEOUT_MS', 60000),
       })
-        .then(res => res.json() as Promise<R>)
+        .then(res => {
+          let parsedRes: Promise<R>;
+          try {
+            parsedRes = res.json();
+          } catch (error) {
+            debugLog(
+              'An error occured while parsing the response. The response is not a valid JSON format. Response:',
+              res
+            );
+            throw error;
+          }
+          return parsedRes;
+        })
         .then((res: R) => {
           if (res.errors) {
             throwCustomError && throwCustomError(res.errors);
